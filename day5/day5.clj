@@ -18,47 +18,43 @@
        opcode (mod instruction 100)
        pmodes (mapv #(get-digit instruction %) (range 2 5))]
    (case opcode
-     1 {:f + :in-addr 2 :out-addr 1 :pmodes pmodes}
-     2 {:f * :in-addr 2 :out-addr 1 :pmodes pmodes}
-     3 {:f #(Integer/parseInt (read-line)) :in-addr 0 :out-addr 1 :pmodes pmodes}
-     4 {:f println :in-addr 1 :out-addr 0 :pmodes pmodes}
+     1 {:f + :in-args 2 :out-pos 2 :pmodes pmodes}
+     2 {:f * :in-args 2 :out-pos 2 :pmodes pmodes}
+     3 {:f #(Integer/parseInt (read-line)) :in-args 0 :out-pos 0 :pmodes pmodes}
+     4 {:f #(println "RESULT:" %) :in-args 1 :out-pos nil :pmodes pmodes}
      99 :halt
    )))
 
-(defn load-addr [mem mode ip]
-  (case mode
-    0 (nth mem (nth mem ip))
-    1 (nth mem ip)))
+(defn ip-offset [opcode] 
+  "Determine how far to advance the instruction pointer after this opcode.
+  - for instructions with output, go to the pos after the output.
+  - for instructions without output, go to the pos after the last input."
+  (if-let [out-pos (:out-pos opcode)] (+ out-pos 2) (inc (:in-args opcode))))
 
-(defn store-addr [mem mode ip value]
-  (case mode
-    0 (assoc mem (nth mem ip) value)
-    1 (assoc mem ip value)))
-
-(defn addr-getter [mode]
-  (fn [mem offset] 
-    (case mode
-      0 (nth mem offset)
-      1 (offset))))
+(defn addr-getter [mem ip pmodes]
+  "Return a function that loads the address at ip+offset. Depending
+  on the parameter mode, it returns mem[ip+offset+1] or ip+offset+1."
+  (fn [offset] 
+    (let [offset-mode (nth pmodes offset)
+          mem-offset (+ ip offset 1)]
+    (case offset-mode
+      0 (nth mem mem-offset)
+      1 mem-offset))))
 
 (defn eval-program
   ([mem] (eval-program mem 0))
   ([mem ip]
   (let [opcode (parse-instruction (subvec mem ip))
-        pmodes (:pmodes opcode)
-        addr-loader #(load-addr mem (nth pmodes %) (+ ip % 1))
-        val-storer #(store-addr mem (nth pmodes %1) (+ ip %1 1) %2)]
+        load-addr (addr-getter mem ip (:pmodes opcode))]
     (when (not= opcode :halt)
-      (let [in-args (:in-addr opcode)
-            in-values (mapv addr-loader (range in-args))
-            result (apply (:f opcode) in-values)
-            out-args (:out-addr opcode)
-            total-args (+ in-args out-args)
-            no-output? (zero? out-args)]
-        (if no-output?
-          (eval-program mem (+ ip total-args 1))
-          (eval-program (val-storer (- total-args 1) result) 
-                        (+ ip total-args 1))))))))
+      (let [in-addrs (mapv load-addr (range (:in-args opcode)))
+            in-vals (mapv #(nth mem %) in-addrs)
+            result (apply (:f opcode) in-vals)
+            next-ip (+ ip (ip-offset opcode))]
+        (if (some? (:out-pos opcode))
+          (eval-program (assoc mem (load-addr (:out-pos opcode)) result) next-ip)
+          (eval-program mem next-ip)))))))
 
 (def test-program (vector 3 0 4 0 99))
-(eval-program problem-input)
+(eval-program test-program)
+;(eval-program problem-input)
