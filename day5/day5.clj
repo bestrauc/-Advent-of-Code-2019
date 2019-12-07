@@ -13,15 +13,15 @@
   (let [shift (->> i (Math/pow 10) int)]
     (mod (quot n shift) 10)))
 
-(defn parse-opcode [instruction]
- "Parse opcode DE ithe ABCDE opcode format."
- (let [opcode (mod instruction 100)
-       modes (mapv #(get-digit instruction %) (range 2 5))]
+(defn parse-instruction [mem]
+ (let [instruction (first mem)
+       opcode (mod instruction 100)
+       pmodes (mapv #(get-digit instruction %) (range 2 5))]
    (case opcode
-     1 {:f + :in-args 2 :out-args 1 :modes modes}
-     2 {:f * :in-args 2 :out-args 1 :modes modes}
-     3 {:f #(Integer/parseInt (read-line)) :in-args 0 :out-args 1 :modes modes}
-     4 {:f println :in-args 1 :out-args 0 :modes modes}
+     1 {:f + :in-addr 2 :out-addr 1 :pmodes pmodes}
+     2 {:f * :in-addr 2 :out-addr 1 :pmodes pmodes}
+     3 {:f #(Integer/parseInt (read-line)) :in-addr 0 :out-addr 1 :pmodes pmodes}
+     4 {:f println :in-addr 1 :out-addr 0 :pmodes pmodes}
      99 :halt
    )))
 
@@ -35,23 +35,28 @@
     0 (assoc mem (nth mem ip) value)
     1 (assoc mem ip value)))
 
+(defn addr-getter [mode]
+  (fn [mem offset] 
+    (case mode
+      0 (nth mem offset)
+      1 (offset))))
+
 (defn eval-program
-  ([code] (eval-program code 0))
-  ([code ip]
-  (let [instruction (nth code ip)
-        opcode (parse-opcode instruction)
-        pmodes (:modes opcode)
-        addr-loader #(load-addr code (nth pmodes %) (+ ip % 1))
-        val-storer #(store-addr code (nth pmodes %1) (+ ip %1 1) %2)]
+  ([mem] (eval-program mem 0))
+  ([mem ip]
+  (let [opcode (parse-instruction (subvec mem ip))
+        pmodes (:pmodes opcode)
+        addr-loader #(load-addr mem (nth pmodes %) (+ ip % 1))
+        val-storer #(store-addr mem (nth pmodes %1) (+ ip %1 1) %2)]
     (when (not= opcode :halt)
-      (let [in-args (:in-args opcode)
+      (let [in-args (:in-addr opcode)
             in-values (mapv addr-loader (range in-args))
             result (apply (:f opcode) in-values)
-            out-args (:out-args opcode)
+            out-args (:out-addr opcode)
             total-args (+ in-args out-args)
             no-output? (zero? out-args)]
         (if no-output?
-          (eval-program code (+ ip total-args 1))
+          (eval-program mem (+ ip total-args 1))
           (eval-program (val-storer (- total-args 1) result) 
                         (+ ip total-args 1))))))))
 
