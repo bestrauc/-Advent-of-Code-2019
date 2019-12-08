@@ -1,11 +1,7 @@
-(require '[clojure.string :as str])
+(require '[clojure.string :as string])
 
-(defn line-to-ints [line]
-  (mapv #(Integer/parseInt %) (str/split line #",")))
-
-; `->` and `slurp` borrowed from Daniel.
-(def problem-input (-> "input5.txt" slurp str/trim-newline line-to-ints))
-(println problem-input)
+; TODO: Same intcode computer as day 5.
+;       Copy it into a separate file.
 
 (defn get-digit [n i] 
   "Get the i-th digit of number n. 
@@ -26,7 +22,7 @@
      1 {:f + :in-args 2 :out-pos 2 :pmodes pmodes}
      2 {:f * :in-args 2 :out-pos 2 :pmodes pmodes}
      3 {:f #(Integer/parseInt (read-line)) :in-args 0 :out-pos 0 :pmodes pmodes}
-     4 {:f #(println "CODE:" %) :in-args 1 :out-pos nil :pmodes pmodes}
+     4 {:f #(println %) :in-args 1 :out-pos nil :pmodes pmodes}
      5 {:f #(if (zero? %1) nil %2) :in-args 2 :out-pos nil :pmodes pmodes}
      6 {:f #(if (zero? %1) %2 nil) :in-args 2 :out-pos nil :pmodes pmodes}
      7 {:f #(if (< %1 %2) 1 0) :in-args 2 :out-pos 2 :pmodes pmodes}
@@ -70,9 +66,54 @@
           (eval-program (assoc mem (load-addr (:out-pos opcode)) result) next-ip)
           (eval-program mem next-ip)))))))
 
-; For testing - should output the value we input.
-(def test-program (vector 3 0 4 0 99))
-(eval-program test-program)
+; Day 7 ---
 
-; The actual program - input 1 for part 1 and input 5 for part 2.
-(eval-program problem-input)
+(defn eval-with-params [mem phase signal]
+  "Feed the phase/signal inputs to (read-line) and return the (println ..) output."
+  (doto
+    (with-out-str
+      (with-in-str (format "%s\n%s" phase signal)
+        (eval-program mem))) println))
+
+(defn line-to-ints [line]
+  (mapv #(Integer/parseInt %) (string/split line #",")))
+
+(def input-mem (-> "inputs/input7.txt" slurp string/trim-newline line-to-ints))
+
+; Part 1: Try out all combinations and find the one with the maximum output.
+(println "Maximum without feedback:"
+  (apply max-key :out
+    (for [m1 (range 5)
+          m2 (range 5)
+          m3 (range 5)
+          m4 (range 5)
+          m5 (range 5)
+          :when (== (count (hash-set m1 m2 m3 m4 m5)) 5)]
+      (let [out1 (eval-with-params input-mem m1 0)
+            out2 (eval-with-params input-mem m2 out1)
+            out3 (eval-with-params input-mem m3 out2)
+            out4 (eval-with-params input-mem m4 out3)
+            out5 (eval-with-params input-mem m5 out4)]
+        {:m1 m1 :m2 m2 :m3 m3 :m4 m4 :m5 m5 :out (Integer/parseInt (string/trim-newline out5))}))))
+
+; TODO: The input str is exhausted at some point, causing issues.
+; Part 2: Try out all combinations and find the one with the maximum output.
+(println "Maximum without feedback:"
+  (apply max-key :out
+    (for [m1 (range 5 10)
+          m2 (range 5 10)
+          m3 (range 5 10)
+          m4 (range 5 10)
+          m5 (range 5 10)
+          :when (== (count (hash-set m1 m2 m3 m4 m5)) 5)]
+      (let [out1 (eval-with-params input-mem m1 0)
+            _ (println out1)
+            out2 (eval-with-params input-mem m2 out1)
+            _ (println out1)
+            out3 (eval-with-params input-mem m3 out2)
+            _ (println out3)
+            out4 (eval-with-params input-mem m4 out3)
+            _ (println out4)
+            out5 (eval-with-params input-mem m5 out4)
+            _ (println out5)]
+        {:m1 m1 :m2 m2 :m3 m3 :m4 m4 :m5 m5 :out 5}))))

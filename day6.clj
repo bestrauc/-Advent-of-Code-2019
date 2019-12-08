@@ -38,16 +38,16 @@
 
 ; Tests and solving the inputs for part 1 & 2 ---------------------------------
 
-(def test-input (string/split (slurp "test_input.txt") #"\n"))
+(def test-input (string/split (slurp "inputs/test_input_6_1.txt") #"\n"))
 (def test-orbit-graph (build-graph test-input))
 (println test-orbit-graph)
 (println "This should be 42:" (count-orbits test-orbit-graph))
 
-(def problem-input (string/split (slurp "input6.txt") #"\n"))
+(def problem-input (string/split (slurp "inputs/input6.txt") #"\n"))
 (def orbit-graph (build-graph problem-input))
 (println "The number of orbits is:" (count-orbits orbit-graph))
 
-(def test-input2 (string/split (slurp "test_input2.txt") #"\n"))
+(def test-input2 (string/split (slurp "inputs/test_input_6_2.txt") #"\n"))
 (def test-orbit-graph2 (build-graph test-input2))
 (println "YOU to SAN example should be 4:" (count-transfers test-orbit-graph2 "YOU" "SAN"))
 

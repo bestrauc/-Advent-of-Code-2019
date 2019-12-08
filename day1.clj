@@ -28,7 +28,7 @@
 ; Sum the fuel -----------------------
 
 (defn calc-total-fuel [] (
-  let [input-lines (read-lines "input1.txt")
+  let [input-lines (read-lines "inputs/input1.txt")
        module-weights (map #(Integer/parseInt %) input-lines)
        module-fuels (map calculate-recursive-fuel module-weights)]
   (apply + module-fuels)))

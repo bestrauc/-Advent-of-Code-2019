@@ -28,7 +28,7 @@
 
 ; Check the example inputs to see if it works.
 (def sample-inputs
-  (mapv line-to-ints (read-lines "test_inputs.txt")))
+  (mapv line-to-ints (read-lines "inputs/test_inputs_2.txt")))
 
 (pprint/pprint (map vector sample-inputs (map eval-memory sample-inputs)))
 (println)
@@ -36,7 +36,7 @@
 ; -----------------------------------------------------------------------------
 
 ; Actually solve the puzzle input
-(def day2-input (line-to-ints (first (read-lines "input2.txt"))))
+(def day2-input (line-to-ints (first (read-lines "inputs/input2.txt"))))
 
 ; Utility function to set the memory that we need in part 2.
 (defn set-input [mem n v] (assoc (assoc mem 1 n) 2 v))
