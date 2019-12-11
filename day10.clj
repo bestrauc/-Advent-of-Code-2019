@@ -34,14 +34,30 @@
         u_norm (map #(-> % (/ s) round) [u_x u_y])]
     [u_norm s]))
 
+; I was later informed that this exists in the clojure core as
+; "(group-by first coll)", but I guess I learned something..
+(defn collect-into-lists [coll]
+  (reduce (fn [m [k v]] (assoc m k (conj (or (m k) []) v))) {} coll))
+
+(defn sort-map-values [in-map]
+  (reduce-kv (fn [m k v] (assoc m k (into [] (sort v)))) {} in-map))
+
 (defn point-to-points [p pcoll]
   (let [lines (mapv (fn [pt] (get-line-params p pt)) pcoll)]
-    (reduce 
-      (fn [res [u s]] 
-        (let [dist-vec (conj (or (res u) []) s)]
-          (assoc res u dist-vec))) 
-      {} lines)))
+    (sort-map-values (collect-into-lists lines))))
 
-(def problem-input (read-asteroids "inputs/input9_0.txt"))
-;(apply max
-       ;(map #(-> %1 (point-to-points problem-input) count dec) problem-input))
+(def problem-input (read-asteroids "inputs/input10_0.txt"))
+
+(defn get-max-station [asteroids]
+  (apply max
+         (map #(-> %1 (point-to-points asteroids) count dec) asteroids)))
+
+(defn compare-angles [[v1_x v1_y] [v2_x v2_y]]
+  (let [v1_angle (-> (Math/atan2 v1_y v1_x) (+ (/ Math/PI 2)) (mod Math/PI))
+        ;_ (println v1_angle)
+        v2_angle (-> (Math/atan2 v2_y v2_x) (+ (/ Math/PI 2)) (mod Math/PI))]
+        ;_ (println v2_angle)]
+    (compare v1_angle v2_angle)))
+
+(defn sort-by-angle [asteroid-map]
+  (into (sorted-map-by compare-angles) asteroid-map))
