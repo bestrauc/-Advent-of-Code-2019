@@ -11,7 +11,7 @@
         height (count (string/split-lines contents))
         width (/ (count flattened) height)
         indexed (map-indexed #(vector (unravel-index %1 height width) %2) flattened)
-        asteroid-map (keys (into {} (filter (fn [v] (= (second v) \#)) indexed)))]
+        asteroid-map (into #{} (keys (into {} (filter (fn [v] (= (second v) \#)) indexed))))]
     asteroid-map))
 
 ; For each asteroid, we get the direct line to each other asteroid.
@@ -43,21 +43,41 @@
   (reduce-kv (fn [m k v] (assoc m k (into [] (sort v)))) {} in-map))
 
 (defn point-to-points [p pcoll]
-  (let [lines (mapv (fn [pt] (get-line-params p pt)) pcoll)]
+  (let [lines (mapv (fn [pt] (get-line-params p pt)) (disj pcoll p))]
     (sort-map-values (collect-into-lists lines))))
 
 (def problem-input (read-asteroids "inputs/input10_0.txt"))
 
 (defn get-max-station [asteroids]
-  (apply max
-         (map #(-> %1 (point-to-points asteroids) count dec) asteroids)))
+  (apply max-key :count
+         (map (fn [coords] 
+                {:coords coords :count (count (point-to-points coords asteroids))})
+              asteroids)))
 
-(defn compare-angles [[v1_x v1_y] [v2_x v2_y]]
-  (let [v1_angle (-> (Math/atan2 v1_y v1_x) (+ (/ Math/PI 2)) (mod Math/PI))
-        ;_ (println v1_angle)
-        v2_angle (-> (Math/atan2 v2_y v2_x) (+ (/ Math/PI 2)) (mod Math/PI))]
-        ;_ (println v2_angle)]
-    (compare v1_angle v2_angle)))
+
+; Answer 1
+(println (get-max-station problem-input))
+
+(defn compare-angles [[v_x v_y] [u_x u_y]]
+  "Check whether u is clockwise of v."
+  (let [atan2_range (* Math/PI 2)
+        v_angle (-> (Math/atan2 v_y v_x) (+ (/ Math/PI 2)) (mod atan2_range))
+        u_angle (-> (Math/atan2 u_y u_x) (+ (/ Math/PI 2)) (mod atan2_range))]
+    (compare v_angle u_angle)))
 
 (defn sort-by-angle [asteroid-map]
   (into (sorted-map-by compare-angles) asteroid-map))
+
+(defn get-nth-vaporized [asteroid-map [s_x s_y] n]
+  "A bit hacky: We just assume that the 200th asteroid occurs within the first rotation.
+
+  It does for this input, but it would not be in principle a problem if it didn't. We
+  would have to interleave the angle-sorted rays we computed with sort-by-angle."
+  (let [angle-sorted (sort-by-angle (point-to-points [s_x s_y] asteroid-map))
+        [norm_x norm_y] (nth (keys angle-sorted) n)
+        dist (-> angle-sorted vals (nth n) first)]
+    [(-> norm_x (* dist) (+ s_x)) (-> norm_y (* dist) (+ s_y))]))
+
+
+; Answert 2
+(println (get-nth-vaporized problem-input [8 16] 199))
